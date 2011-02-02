@@ -15,6 +15,14 @@
    (tbnl:create-regex-dispatcher
     "^/$" 'pages:front-page)
 
+   ;;
+   (tbnl:create-regex-dispatcher
+    "^/recipe/add$" 'pages:add-recipe)
+
+   ;;
+   (tbnl:create-regex-dispatcher
+    "^/recipe/add/receive$" 'pages:receive-add-recipe)
+
    ;; for miscallenous testing
    (tbnl:create-regex-dispatcher
     "^/test$"

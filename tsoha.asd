@@ -12,7 +12,7 @@
   :components ((:file "packages")
                (:file "db" :depends-on ("packages"))
                (:file "queries" :depends-on ("db" "packages"))
-               (:file "pages" :depends-on ("packages"))
+               (:file "pages" :depends-on ("db" "packages"))
                (:file "main" :depends-on ("packages"
                                           "pages"))))
 

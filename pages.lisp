@@ -46,13 +46,12 @@ to a string and returns the string. The content is formatted using FORMAT-HTML."
 
 
 (defun front-page ()
-  (simple-page (list :navigation-div "nothing here yet")))
+  (let ((recipe-count (queries:recipe-count)))
+    (simple-page (body* :navigation-div
+                        (format nil "Total ~d recipes." recipe-count)))))
 
 
-(defun unit-list ()
-  "this should be made to sync with the db"
 
-  '("grams" "dl" "litres" "ounces" "teaspoon" "kpl"))
 
 
 (defparameter *ingredient-count* 20
@@ -61,38 +60,38 @@ to a string and returns the string. The content is formatted using FORMAT-HTML."
 (defmethod format-html ((stream stream) (arf (eql :add-recipe-form)))
   (flet ((unit-select (name)
            `((:select :name ,name :id ,name)
-             ,@(loop for unit in *unit-list* collect
+             ,@(loop for unit in (queries:unit-list) collect
                     `((:option) ,unit)))))
 
-  (lml2:html-print
+    (lml2:html-print
 
-   `((:form :method :post :action "/recipe/add/receive")
+     `((:form :method :post :action "/recipe/add/receive")
 
-     ((:label :for "name") "Name of the recipe: ")
-     :br
-     ((:input :type :text :size 30 :name "name" :id "name"))
-     :br
-     ((:label :for "instructions") "Instructions: ")
-     :br
-     ((:textarea :name "instructions" :id "instructions" :cols 80 :rows 25))
+       ((:label :for "name") "Name of the recipe: ")
+       :br
+       ((:input :type :text :size 30 :name "name" :id "name"))
+       :br
+       ((:label :for "instructions") "Instructions: ")
+       :br
+       ((:textarea :name "instructions" :id "instructions" :cols 80 :rows 25))
 
-     ((:table)
-      ((:tr) ((:td) "Ingredient") ((:td) "Amount") ((:td) "Unit"))
-      ,@(loop for i from 0 below *ingredient-count* collect
-             (let ((ingredient-n (format nil "ingredient~d" i))
-                   (amount-n (format nil "amount~d" i))
-                   (unit-n (format nil "unit~d" i)))
-               `((:tr)
-                 ((:td)
-                  ((:input :type :text :name ,ingredient-n :id ,ingredient-n)))
-                 ((:td)
-                  ((:input :type :text :size 10 :name ,amount-n :id ,amount-n)))
-                 ((:td)
-                  ,(unit-select unit-n))))))
-                       
-     ((:input :type :submit :value "Add recipe")))
+       ((:table)
+        ((:tr) ((:td) "Ingredient") ((:td) "Amount") ((:td) "Unit"))
+        ,@(loop for i from 0 below *ingredient-count* collect
+               (let ((ingredient-n (format nil "ingredient~d" i))
+                     (amount-n (format nil "amount~d" i))
+                     (unit-n (format nil "unit~d" i)))
+                 `((:tr)
+                   ((:td)
+                    ((:input :type :text :name ,ingredient-n :id ,ingredient-n)))
+                   ((:td)
+                    ((:input :type :text :size 10 :name ,amount-n :id ,amount-n)))
+                   ((:td)
+                    ,(unit-select unit-n))))))
+       
+       ((:input :type :submit :value "Add recipe")))
 
-   stream)))
+     stream)))
 
 
 
@@ -117,40 +116,58 @@ to a string and returns the string. The content is formatted using FORMAT-HTML."
   (when (not (= (length ingredients)
                 (length amounts)
                 (length units)))
-    (error "The lists must be of same length or this ain't gonna work."))
+    (error "MULTIFAIL"))
 
-      (loop
-         for i in ingredients
-         for a in amounts
-         for u in units
-         when (and (not (empty-string-p i))
-                   (not (empty-string-p u)))
-           collect (list i (parse-integer a) u))) ;; TODO: handle parse-errors
-                
+  (loop
+     for i in ingredients
+     for a in amounts
+     for u in units
+     when (and (not (empty-string-p i))
+               (not (empty-string-p u)))
+     collect (list i (parse-integer a) u))) ;; TODO: handle parse-errors
+
 
 (defun receive-add-recipe ()
   (let ((details (get-details))
         (name (tbnl:post-parameter "name"))
         (instructions (tbnl:post-parameter "instructions")))
 
-    (when (not (and name instructions details))
-      (return-from receive-add-recipe (simple-page "FAIL because faulty POST")))
+    (when (not (and name instructions))
+      (error "Faulty POST-parameters, need `name´ and `instructions´"))
 
-    ;; this is basically the same as try-catch in java/c++/etc
-    (handler-case  
-
-        ;; TRY add the recipe, if it's successful (returns normally), then do a
-        ;; redirect to it's own page
-        (tbnl:redirect (format nil "/recipe/id/~d"
-                               (queries:add-recipe :name name
-                                                   :instructions instructions
-                                                   :details details)))
-
-      ;; CATCH any errors (t is a type that is somewhat like object in java, matches anything)
-      (t (err)
-        (declare (ignore err))
-        (simple-page "FAIL because database")))))
+    ;; let the errors fly
+    (tbnl:redirect (format nil "/recipe/id/~d"
+                           (queries:add-recipe :name name
+                                               :instructions instructions
+                                               :details details)))))
 
 
-    
 
+
+(defun recipe-by-id ()
+  (db:with-connection 
+    (simple-page
+     (body* :navigation-div 
+            (pomo:get-dao 'db::recipe (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*))))))))))
+
+
+(defmethod format-html ((stream stream) (srf (eql :search-recipe-form)))
+  (lml2:html-print
+
+   `((:form :method :get :action "/recipe/search/results")
+     ((:label :for "name") "Name:")
+     ((:input :type :text :id "name" :name "name"))
+     ((:input :type :submit :value "search")))
+
+   stream))
+
+
+(defun recipe-search ()
+  (simple-page
+   (body* :navigation-div
+          :search-recipe-form)))
+
+(defun recipe-search-results ()
+  (simple-page
+   (body* :navigation-div
+          (queries:search-recipe-by-name (tbnl:get-parameter "name")))))

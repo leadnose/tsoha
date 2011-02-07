@@ -29,7 +29,8 @@
            #:unit-list
            #:recipe-count
            #:search-recipe-by-name
-           #:newest-recipes))
+           #:newest-recipes
+           #:recipe-details))
 
 (defpackage #:tsoha-pages
   (:documentation

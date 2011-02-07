@@ -13,10 +13,10 @@ rational number, not a division operation,  and 2/6 would be the
 same as 1/3.
 
 
-
 PACKAGES are somewhat like packages in Java, and in this app they are
 all defined in the file `packages.lisp´. They define what names are
-visible to the outside of packages. 
+visible to the outside of packages.
+
 
 
 MACROS look like function calls but are called (expanded) before

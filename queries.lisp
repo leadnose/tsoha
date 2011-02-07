@@ -1,5 +1,7 @@
 (in-package #:tsoha-queries)
 
+(defparameter *limit* 25)
+
 (defun add-recipe (&key
                    name
                    instructions
@@ -45,15 +47,17 @@ When not successful, raises an error."
                     (format nil "select * from recipe where name like ~a;"
                             (pomo:sql-escape-string name)))))
 
-;;;; FIXME: this looks butt-fugly.
+
 (let ((units (list "grams" "dl" "litres" "ounces" "teaspoon" "kpl" "kilograms")))
+
   (db:with-connection
     (loop for unit in units do
          (handler-case
              (pomo:insert-dao (make-instance 'db::unit :name unit))
-           (t (e)
-             (declare (ignore e))
-             (warn "Unit ~s already exists" unit)))))
+           (cl-postgres-error:unique-violation (e)
+             (declare (ignorable e))
+             (warn "Unit already exists: ~a" unit)))))
+
   (defun unit-list ()
     units))
 
@@ -62,4 +66,25 @@ When not successful, raises an error."
   (db:with-connection 
     (caar (pomo:query "select count(*) from recipe;"))))
 
+
+(defun newest-recipes (&optional (limit *limit*))
+  "Returns a list of recipe ids (integers)"
+  (mapcar #'car
+  (db:with-connection
+    (pomo:query (format nil "select id from recipe order by id desc limit ~d" limit)))))
+
+
+
+
+(defun recipe-details (recipe-id)
+  (format nil "~{~{~a ~f ~a~%~}~}"
+  (db:with-connection
+    (pomo:query
+     (format nil "select ingredient_name, amount, unit_name from \
+recipe_ingredient_unit_amount where recipe_id = ~d;" recipe-id)))))
+
+
+
+
+  
 

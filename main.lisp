@@ -30,28 +30,23 @@
    (tbnl:create-regex-dispatcher
     "^/recipe/add/receive$" 'pages:receive-add-recipe)
 
-   ;; by id
+   ;; recipe for id
    (tbnl:create-regex-dispatcher
     "^/recipe/id/[0-9]+$" 'pages:recipe-by-id)
 
+   ;; search recipes
    (tbnl:create-regex-dispatcher
     "^/recipe/search$" 'pages:recipe-search)
 
+   ;; show search results
    (tbnl:create-regex-dispatcher
     "^/recipe/search/results$" 'pages:recipe-search-results)
 
+   ;; show sources
    (tbnl:create-folder-dispatcher-and-handler "/sources/"
                                               "/home/leadnose/hack/tsoha/"
-                                              "text")
+                                              "text")))
 
-
-
-   ;; for miscallenous testing
-   (tbnl:create-regex-dispatcher
-    "^/test$"
-    (lambda ()
-      (let ((name (or (tbnl:get-parameter "name") "world")))
-        (format nil "Hello, ~a" name))))))
 
 
 

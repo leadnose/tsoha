@@ -1,26 +1,15 @@
 (in-package #:tsoha-db)
 
-;;  create user tsoha_user
-;;  alter USER tsoha_user with password 'tsoha_password';
-;;  create DATABASE tsoha_db OWNER tsoha_user;
-
 
 (defparameter *db-spec* '("tsoha_db" "tsoha_user" "tsoha_password" "localhost"))
 
-(defmacro with-new-connection (&body body)
+(defmacro with-connection (&body body)
   "Establishes a new database connection for the duration of BODY, and
 closes the connection after the BODY exits either normally or
 abnormally."
   `(pomo:with-connection *db-spec*
      ,@body))
 
-
-
-(defmacro with-connection (&body body)
-  "Like WITH-NEW-CONNECTION, but if connection is already established,
-doesn't re-establish it." ;;; FIXME
-  `(with-new-connection
-         ,@body))
        
 
 (defmacro with-transaction (&body body)

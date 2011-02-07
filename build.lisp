@@ -1,7 +1,7 @@
 #! /usr/bin/sbcl --script
 
-(require 'asdf)
-(load "/home/leadnose/quicklisp/setup.lisp")
+(load "/home/leadnose/.sbclrc")
 (require 'tsoha)
+(save-lisp-and-die "tsoha.exe" :executable t)
 
-(print "hello world")
+

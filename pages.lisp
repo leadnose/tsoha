@@ -44,11 +44,12 @@ to a string and returns the string. The content is formatted using FORMAT-HTML."
   (format stream "</div>"))
 
 
-
 (defun front-page ()
-  (let ((recipe-count (queries:recipe-count)))
+  (let ((recipe-count (queries:recipe-count))
+        (newest-recipes (queries:newest-recipes)))
     (simple-page (body* :navigation-div
-                        (format nil "Total ~d recipes." recipe-count)))))
+                        (format nil "Total ~d recipes." recipe-count)
+                        newest-recipes))))
 
 
 
@@ -135,20 +136,19 @@ to a string and returns the string. The content is formatted using FORMAT-HTML."
     (when (not (and name instructions))
       (error "Faulty POST-parameters, need `name´ and `instructions´"))
 
-    ;; let the errors fly
     (tbnl:redirect (format nil "/recipe/id/~d"
                            (queries:add-recipe :name name
                                                :instructions instructions
                                                :details details)))))
 
 
-
-
 (defun recipe-by-id ()
-  (db:with-connection 
-    (simple-page
-     (body* :navigation-div 
-            (pomo:get-dao 'db::recipe (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*))))))))))
+  (let ((recipe-id (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*)))))))
+    (db:with-connection 
+      (simple-page
+       (body* :navigation-div 
+              (pomo:get-dao 'db::recipe recipe-id)
+              (queries:recipe-details recipe-id))))))
 
 
 (defmethod format-html ((stream stream) (srf (eql :search-recipe-form)))

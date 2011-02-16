@@ -18,6 +18,10 @@
 (defparameter tbnl:*dispatch-table*
   (list
 
+   ;; stylesheet
+   (tbnl:create-static-file-dispatcher-and-handler
+    "/style.css" #P"/home/leadnose/hack/tsoha/style.css" "text/css")
+
    ;; the front page
    (tbnl:create-regex-dispatcher
     "^/$" 'pages:front-page)

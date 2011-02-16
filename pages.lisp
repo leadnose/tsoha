@@ -20,17 +20,29 @@
          (write-char #\space stream))))
 
 
+(defparameter *default-title* "Tsoha")
 
-(defun simple-page (content &optional (stream nil))
-  "Writes a simple HTML-page to STREAM, or if STREAM is NIL, writes it
-to a string and returns the string. The content is formatted using FORMAT-HTML."
+(defparameter *default-style-href* "/style.css")
 
-  (let ((out (or stream (make-string-output-stream))))
-    (format out "~&<html>~%~4t<body>~%~4t")
-    (format-html out content)
-    (format out "~&~4t</body>~%</html>~%")
-    (unless stream
-      (get-output-stream-string out))))
+(defun simple-page (content
+                    &key
+                    (title *default-title*)
+                    (style-href *default-style-href*)))
+                    
+  (let ((content-str (with-output-to-string (out)
+                       (format-html out content))))
+    (with-output-to-string (out)
+      (lml2:html-print
+       `((:html)
+         ((:head)
+          ((:title) ,title)
+          ((:link :rel "stylesheet" :type "text/css" :href ,style-href)))
+         ((:body)
+          ,content-str))
+       out))))
+   
+      
+
 
 (defparameter *nav-links*
   '(("/" "home")

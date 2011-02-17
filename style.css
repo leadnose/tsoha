@@ -1,3 +1,14 @@
 body {
     background-color: #fff8dc;
 }
+
+.content {
+    background-color: #dddddd;
+    padding: 15px;
+}
+
+.navigation {
+    padding: 15px;
+
+    background-color: #E37B18;
+}

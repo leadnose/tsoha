@@ -3,21 +3,26 @@
 
 (defparameter *db-spec* '("tsoha_db" "tsoha_user" "tsoha_password" "localhost"))
 
+
 (defmacro with-connection (&body body)
-  "Establishes a new database connection for the duration of BODY, and
+"
+Establishes a new database connection for the duration of BODY, and
 closes the connection after the BODY exits either normally or
-abnormally."
+abnormally.
+"
   `(pomo:with-connection *db-spec*
      ,@body))
 
        
 
 (defmacro with-transaction (&body body)
-  "Establishs a transaction for the duration of the BODY. If body exits
-  normally, commit the transaction, if BODY raises an exception, rolls
-  the transaction back.
+  "
+Establishes a transaction for the duration of the BODY. If body exits
+normally, commit the transaction, if BODY raises an exception, rolls
+the transaction back.
 
-Does NOT establish a connection."
+Does NOT establish a connection.
+"
   `(pomo:with-transaction ()
      ,@body))
 
@@ -32,6 +37,7 @@ transaction and handles the commit/rollback and disconnecting."
   
 ;;;; These classes try to map to the tables as defined in create_tables.sql
 
+
 (defclass recipe ()
   ((id :reader id
        :col-type integer)
@@ -45,23 +51,13 @@ transaction and handles the commit/rollback and disconnecting."
   (:keys id))
 
 
-(defmethod recipe-details (recipe-id)
-  (db:with-connection
-    (pomo:query-dao 'db::recipe-ingredient-unit-amount
-                    (format nil "select * from recipe_ingredient_unit_amount where recipe_id = ~d;" recipe-id))))
-
-
-
-;(loop for 'describe (recipe-details 1))
-
-
 (defmethod print-object ((recipe recipe) stream)
-  (format stream
-          "Name: ~a, instructions: ~a"
-          (name recipe)
-          (instructions recipe)))
+  (print-unreadable-object (recipe stream :type t)
+    (format stream
+            "~&name: ~s,~&instructions: ~s"
+            (name recipe)
+            (instructions recipe))))
   
-
 
 (defclass ingredient ()
   ((name :reader name
@@ -94,6 +90,7 @@ transaction and handles the commit/rollback and disconnecting."
            :col-type float))
    (:metaclass pomo:dao-class)
    (:keys recipe-id ingredient-name unit-name))
+
               
 (defclass nutrition ()
   ((name :reader name
@@ -117,6 +114,3 @@ transaction and handles the commit/rollback and disconnecting."
                    :initarg grams-per-100g))
   (:metaclass pomo:dao-class)
   (:keys ingredient-name nutrition-name))
-
-
-               

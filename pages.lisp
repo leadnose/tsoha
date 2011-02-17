@@ -1,7 +1,9 @@
 (in-package #:tsoha-pages)
 
-(defstruct body 
+
+(defstruct body
   (contents nil :type list))
+
 
 (defun body (list)
   (make-body :contents list))
@@ -10,11 +12,14 @@
 (defun body* (&rest rest)
   (make-body :contents rest))
 
+
 (defgeneric format-html (stream object)
   (:method ((stream stream) obj)
+    "Pretty-print and escape for html."
     (format stream "~a"
             (tbnl:escape-for-html (format nil "~a" obj))))
   (:method ((stream stream) (body body))
+    "Call FORMAT-HTML on the contents of BODY, separating the items by space."
     (loop for item in (body-contents body) do
          (format-html stream item)
          (write-char #\space stream))))
@@ -22,13 +27,15 @@
 
 (defparameter *default-title* "Tsoha")
 
+
 (defparameter *default-style-href* "/style.css")
+
 
 (defun simple-page (content
                     &key
                     (title *default-title*)
-                    (style-href *default-style-href*)))
-                    
+                    (header-1 title)
+                    (style-href *default-style-href*))
   (let ((content-str (with-output-to-string (out)
                        (format-html out content))))
     (with-output-to-string (out)
@@ -38,10 +45,10 @@
           ((:title) ,title)
           ((:link :rel "stylesheet" :type "text/css" :href ,style-href)))
          ((:body)
-          ,content-str))
+          ((:h1) ,header-1)
+          ((:div :class "content" :id "content")
+           ,content-str)))
        out))))
-   
-      
 
 
 (defparameter *nav-links*
@@ -49,11 +56,23 @@
     ("/recipe/search" "search recipes")
     ("/recipe/add" "add recipes")))
 
+
 (defmethod format-html ((stream stream) (nd (eql :navigation-div)))
   (format stream "<div class=~s id=~s>~%" "navigation" "navigation")
   (loop for (url text) in *nav-links* do
-       (format stream "<a href=~s>~a</a></br>" url text))
+       (format stream "<a href=~s>~a</a>  " url text))
   (format stream "</div>"))
+
+
+(defclass recipe-listing ()
+  ((recipes :initarg :recipes
+            :reader recipes)))
+   
+
+;; (defmethod format-html ((stream stream) (rl recipe-listing))
+;;   (lml2:html-print
+;;    `((:div :class "recipe_listing" :id "recipe_listing")
+     
 
 
 (defun front-page ()
@@ -64,22 +83,19 @@
                         newest-recipes))))
 
 
-
-
-
 (defparameter *ingredient-count* 20
   "Should be enough for everybody.")
 
+
+(defun unit-select (name) ;; this is ugly :(
+  `((:select :name ,name :id ,name)
+    ,@(loop for unit in (queries:unit-list) collect
+           `((:option) ,unit))))
+
+
 (defmethod format-html ((stream stream) (arf (eql :add-recipe-form)))
-  (flet ((unit-select (name)
-           `((:select :name ,name :id ,name)
-             ,@(loop for unit in (queries:unit-list) collect
-                    `((:option) ,unit)))))
-
     (lml2:html-print
-
      `((:form :method :post :action "/recipe/add/receive")
-
        ((:label :for "name") "Name of the recipe: ")
        :br
        ((:input :type :text :size 30 :name "name" :id "name"))
@@ -87,7 +103,6 @@
        ((:label :for "instructions") "Instructions: ")
        :br
        ((:textarea :name "instructions" :id "instructions" :cols 80 :rows 25))
-
        ((:table)
         ((:tr) ((:td) "Ingredient") ((:td) "Amount") ((:td) "Unit"))
         ,@(loop for i from 0 below *ingredient-count* collect
@@ -101,21 +116,17 @@
                     ((:input :type :text :size 10 :name ,amount-n :id ,amount-n)))
                    ((:td)
                     ,(unit-select unit-n))))))
-       
        ((:input :type :submit :value "Add recipe")))
-
-     stream)))
-
-
+     stream))
 
 
 (defun add-recipe ()
   (simple-page (body* :navigation-div
                       :add-recipe-form)))
 
+
 (defun empty-string-p (s)
   (string= "" (string-trim '(#\space #\newline #\tab) s)))
-
 
 
 (defun get-details (&optional
@@ -140,10 +151,22 @@
      collect (list i (parse-integer a) u))) ;; TODO: handle parse-errors
 
 
+(defun strip-crlfs (string)
+"
+Returns a new string in which all the
+     #\return \#newline
+have been replaced with just a #\newline.
+"
+  (with-output-to-string (out)
+    (loop for char across string do
+         (unless (char= #\return char)
+           (write-char char out)))))
+
+
 (defun receive-add-recipe ()
   (let ((details (get-details))
         (name (tbnl:post-parameter "name"))
-        (instructions (tbnl:post-parameter "instructions")))
+        (instructions (strip-crlfs (tbnl:post-parameter "instructions"))))
 
     (when (not (and name instructions))
       (error "Faulty POST-parameters, need `name´ and `instructions´"))
@@ -154,13 +177,36 @@
                                                :details details)))))
 
 
+(defmethod format-html ((stream stream) (recipe db::recipe))
+  (with-slots ((name db::name) (instructions db::instructions) (id db::id)) recipe
+    (let ((details (queries:recipe-details id)))
+      (lml2:html-print
+       `((:div :class "recipe" :id ,id)
+         ((:h2) ,name)
+         ((:h3) "Ingredients")
+         ((:table)
+          ,@(loop for (ing-name amount unit-name) in details
+                 collect `((:tr)
+                          ((:td) ,ing-name)
+                          ((:td) ,amount)
+                          ((:td) ,unit-name))))
+         ((:h3) "Instructions")
+         ,(with-output-to-string (out)
+            (loop for char across (tbnl:escape-for-html instructions) do
+                 (if (char= #\newline char)
+                     (format out "<br>")
+                     (write-char char out)))))
+       stream))))
+
+
 (defun recipe-by-id ()
-  (let ((recipe-id (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*)))))))
-    (db:with-connection 
-      (simple-page
-       (body* :navigation-div 
-              (pomo:get-dao 'db::recipe recipe-id)
-              (queries:recipe-details recipe-id))))))
+    (let* ((recipe-id (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*))))))
+           (recipe (queries:find-recipe-by-id recipe-id)))
+      (if (not recipe)
+          (setf (tbnl:return-code*) 404) ;; this causes the server to respond with a 404
+          (simple-page
+           (body* :navigation-div
+                  recipe)))))
 
 
 (defmethod format-html ((stream stream) (srf (eql :search-recipe-form)))
@@ -178,6 +224,7 @@
   (simple-page
    (body* :navigation-div
           :search-recipe-form)))
+
 
 (defun recipe-search-results ()
   (simple-page

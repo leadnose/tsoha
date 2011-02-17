@@ -26,6 +26,7 @@
   (:use #:cl)
   (:nicknames #:queries)
   (:export #:add-recipe
+           #:find-recipe-by-id
            #:unit-list
            #:recipe-count
            #:search-recipe-by-name

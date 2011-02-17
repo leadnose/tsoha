@@ -1,30 +1,31 @@
 (in-package #:tsoha-queries)
 
-(defparameter *limit* 25)
+
+(defparameter *default-limit* 25)
+
 
 (defun add-recipe (&key
                    name
                    instructions
                    details)
-  "NAME and INSTRUCTIONS are supposed to be strings,
+"
+NAME and INSTRUCTIONS are supposed to be strings,
 DETAILS is a list of form
 
    ((INGREDIENT-NAME AMOUNT UNIT) ...)
 
 where INGREDIENT and UNIT are strings and AMOUNT is a number.
 
-When successful, returns RECIPE-ID. 
+When successful, returns RECIPE-ID of the newly added recipe. 
 
-When not successful, raises an error."
+When not successful, raises an error.
+"
 
   (db:with-connection-and-transaction
-
       (let ((recipe (make-instance 'db::recipe
                                    :name name
                                    :instructions instructions)))
-
         (pomo:insert-dao recipe)
-
         (loop for (ing-name amount unit) in details collect
              (let ((ing (make-instance 'db::ingredient
                                        :name ing-name)))
@@ -36,8 +37,11 @@ When not successful, raises an error."
                                                :unit-name unit
                                                :amount amount))))
         (db::id recipe))))
-                                           
-      
+
+
+(defun find-recipe-by-id (recipe-id)
+  (db:with-connection 
+    (pomo:get-dao 'db::recipe recipe-id)))
 
 
 (defun search-recipe-by-name (name)
@@ -49,7 +53,6 @@ When not successful, raises an error."
 
 
 (let ((units (list "grams" "dl" "litres" "ounces" "teaspoon" "kpl" "kilograms")))
-
   (db:with-connection
     (loop for unit in units do
          (handler-case
@@ -57,7 +60,6 @@ When not successful, raises an error."
            (cl-postgres-error:unique-violation (e)
              (declare (ignorable e))
              (warn "Unit already exists: ~a" unit)))))
-
   (defun unit-list ()
     units))
 
@@ -67,24 +69,23 @@ When not successful, raises an error."
     (caar (pomo:query "select count(*) from recipe;"))))
 
 
-(defun newest-recipes (&optional (limit *limit*))
-  "Returns a list of recipe ids (integers)"
-  (mapcar #'car
+(defun newest-recipes (&optional (limit *default-limit*))
+  "Returns a list of DB::RECIPEs"
   (db:with-connection
-    (pomo:query (format nil "select id from recipe order by id desc limit ~d" limit)))))
-
-
+    (pomo:query-dao 'db::recipe
+                    (format nil "select * from recipe order by id desc limit ~d" limit))))
 
 
 (defun recipe-details (recipe-id)
-  (format nil "~{~{~a ~f ~a~%~}~}"
+  "
+Returns a list of lists of form
+
+ ((ingredient-name amount unit-name) ..)
+
+If there is no recipe with RECIPE-ID, returns NIL.
+
+"
   (db:with-connection
     (pomo:query
      (format nil "select ingredient_name, amount, unit_name from \
-recipe_ingredient_unit_amount where recipe_id = ~d;" recipe-id)))))
-
-
-
-
-  
-
+recipe_ingredient_unit_amount where recipe_id = ~d;" recipe-id))))

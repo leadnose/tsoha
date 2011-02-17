@@ -1,6 +1,7 @@
 create table recipe (
     id serial primary key ,
     name varchar(255) not null,
+    description varchar(1024) not null,
     instructions text not null
 );
 

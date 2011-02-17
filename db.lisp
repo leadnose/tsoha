@@ -44,6 +44,9 @@ transaction and handles the commit/rollback and disconnecting."
    (name :reader name
          :initarg :name
          :col-type string)
+   (description :reader description
+                :initarg :description
+                :col-type string)
    (instructions :reader instructions
                  :initarg :instructions
                  :col-type string))
@@ -54,9 +57,11 @@ transaction and handles the commit/rollback and disconnecting."
 (defmethod print-object ((recipe recipe) stream)
   (print-unreadable-object (recipe stream :type t)
     (format stream
-            "~&name: ~s,~&instructions: ~s"
+            "~&id: ~d,~&name: ~s,~&instructions: ~s,~&description: ~s"
+            (id recipe)
             (name recipe)
-            (instructions recipe))))
+            (instructions recipe)
+            (description recipe))))
   
 
 (defclass ingredient ()

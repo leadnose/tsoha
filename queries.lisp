@@ -7,6 +7,7 @@
 (defun add-recipe (&key
                    name
                    instructions
+                   description
                    details)
 "
 NAME and INSTRUCTIONS are supposed to be strings,
@@ -24,6 +25,7 @@ When not successful, raises an error.
   (db:with-connection-and-transaction
       (let ((recipe (make-instance 'db::recipe
                                    :name name
+                                   :description description
                                    :instructions instructions)))
         (pomo:insert-dao recipe)
         (loop for (ing-name amount unit) in details collect

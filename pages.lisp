@@ -67,12 +67,25 @@
 (defclass recipe-listing ()
   ((recipes :initarg :recipes
             :reader recipes)))
-   
 
-;; (defmethod format-html ((stream stream) (rl recipe-listing))
-;;   (lml2:html-print
-;;    `((:div :class "recipe_listing" :id "recipe_listing")
-     
+
+(defun recipe-listing (recipe-list)
+  (make-instance 'recipe-listing :recipes recipe-list))
+
+
+(defmethod format-html ((stream stream) (rl recipe-listing))
+  (lml2:html-print
+   `((:div :class "recipe_listing" :id "recipe_listing")
+     ((:table)
+      ,@(loop for recipe in (recipes rl)
+           collect
+             `((:tr)
+               ((:td)
+                ((:a :href
+                     ,(format nil "/recipe/id/~d" (db::id recipe)))
+                 ,(db::name recipe)))))))
+   stream))
+
 
 
 (defun front-page ()
@@ -80,7 +93,7 @@
         (newest-recipes (queries:newest-recipes)))
     (simple-page (body* :navigation-div
                         (format nil "Total ~d recipes." recipe-count)
-                        newest-recipes))))
+                        (recipe-listing newest-recipes)))))
 
 
 (defparameter *ingredient-count* 20
@@ -94,11 +107,17 @@
 
 
 (defmethod format-html ((stream stream) (arf (eql :add-recipe-form)))
-    (lml2:html-print
-     `((:form :method :post :action "/recipe/add/receive")
-       ((:label :for "name") "Name of the recipe: ")
+  (lml2:html-print
+   ` ((:div :class "form" :id "recipe_add_form")
+      ((:h2) "Add a new recipe")
+      ((:form :method :post :action "/recipe/add/receive")
+       ((:label :for "name") "Name: ")
        :br
        ((:input :type :text :size 30 :name "name" :id "name"))
+       :br
+       ((:label :for "description") "Description: ")
+       :br
+       ((:textarea :name "description" :id "description" :cols 80 :rows 5))
        :br
        ((:label :for "instructions") "Instructions: ")
        :br
@@ -116,7 +135,7 @@
                     ((:input :type :text :size 10 :name ,amount-n :id ,amount-n)))
                    ((:td)
                     ,(unit-select unit-n))))))
-       ((:input :type :submit :value "Add recipe")))
+       ((:input :type :submit :value "Add recipe"))))
      stream))
 
 
@@ -152,7 +171,7 @@
 
 
 (defun strip-crlfs (string)
-"
+  "
 Returns a new string in which all the
      #\return \#newline
 have been replaced with just a #\newline.
@@ -166,6 +185,7 @@ have been replaced with just a #\newline.
 (defun receive-add-recipe ()
   (let ((details (get-details))
         (name (tbnl:post-parameter "name"))
+        (description (tbnl:post-parameter "description"))
         (instructions (strip-crlfs (tbnl:post-parameter "instructions"))))
 
     (when (not (and name instructions))
@@ -174,6 +194,7 @@ have been replaced with just a #\newline.
     (tbnl:redirect (format nil "/recipe/id/~d"
                            (queries:add-recipe :name name
                                                :instructions instructions
+                                               :description description
                                                :details details)))))
 
 
@@ -186,27 +207,27 @@ have been replaced with just a #\newline.
          ((:h3) "Ingredients")
          ((:table)
           ,@(loop for (ing-name amount unit-name) in details
-                 collect `((:tr)
-                          ((:td) ,ing-name)
-                          ((:td) ,amount)
-                          ((:td) ,unit-name))))
+               collect `((:tr)
+                         ((:td) ,ing-name)
+                         ((:td) ,amount)
+                         ((:td) ,unit-name))))
          ((:h3) "Instructions")
          ,(with-output-to-string (out)
-            (loop for char across (tbnl:escape-for-html instructions) do
-                 (if (char= #\newline char)
-                     (format out "<br>")
-                     (write-char char out)))))
+                                 (loop for char across (tbnl:escape-for-html instructions) do
+                                      (if (char= #\newline char)
+                                          (format out "<br>")
+                                          (write-char char out)))))
        stream))))
 
 
 (defun recipe-by-id ()
-    (let* ((recipe-id (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*))))))
-           (recipe (queries:find-recipe-by-id recipe-id)))
-      (if (not recipe)
-          (setf (tbnl:return-code*) 404) ;; this causes the server to respond with a 404
-          (simple-page
-           (body* :navigation-div
-                  recipe)))))
+  (let* ((recipe-id (parse-integer (car (last (ppcre:all-matches-as-strings "[0-9]+" (tbnl:request-uri*))))))
+         (recipe (queries:find-recipe-by-id recipe-id)))
+    (if (not recipe)
+        (setf (tbnl:return-code*) 404) ;; this causes the server to respond with a 404
+        (simple-page
+         (body* :navigation-div
+                recipe)))))
 
 
 (defmethod format-html ((stream stream) (srf (eql :search-recipe-form)))
@@ -229,4 +250,4 @@ have been replaced with just a #\newline.
 (defun recipe-search-results ()
   (simple-page
    (body* :navigation-div
-          (queries:search-recipe-by-name (tbnl:get-parameter "name")))))
+          (recipe-listing (queries:search-recipe-by-name (tbnl:get-parameter "name"))))))

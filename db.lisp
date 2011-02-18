@@ -55,13 +55,7 @@ transaction and handles the commit/rollback and disconnecting."
 
 
 (defmethod print-object ((recipe recipe) stream)
-  (print-unreadable-object (recipe stream :type t)
-    (format stream
-            "~&id: ~d,~&name: ~s,~&instructions: ~s,~&description: ~s"
-            (id recipe)
-            (name recipe)
-            (instructions recipe)
-            (description recipe))))
+  (describe recipe stream))
   
 
 (defclass ingredient ()

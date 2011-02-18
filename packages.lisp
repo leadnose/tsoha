@@ -21,8 +21,11 @@
 
 (defpackage #:tsoha-queries
   (:documentation
-   "Contains queries that either search or modify the database. DB
-  shouldn't be accessed from any other package.")
+   "Contains queries that either search or modify the database. The database
+shouldn't be accessed from any other package than this.
+
+The functions beginning with FIND- returns only one object, whereas functions
+beginning with SEARCH- return a list of objects.")
   (:use #:cl)
   (:nicknames #:queries)
   (:export #:add-recipe
@@ -30,12 +33,17 @@
            #:unit-list
            #:recipe-count
            #:search-recipe-by-name
+           #:search-recipe-by-ingredient
+           #:search-recipe-by-instructions
+           #:search-recipe-generic
            #:newest-recipes
-           #:recipe-details))
+           #:recipe-details
+           #:find-ingredient
+           #:search-ingredient-by-name))
 
 (defpackage #:tsoha-pages
   (:documentation
-   "Contains the request-handler functions that actually respond.")
+   "Contains the request-handler functions that actually respond to requests.")
   (:use #:cl)
   (:nicknames #:pages)
   (:export #:front-page

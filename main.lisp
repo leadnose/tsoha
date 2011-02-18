@@ -78,5 +78,10 @@
 
 
 
-
-
+(defun insert-from-file (pathspec)
+  (with-open-file (file pathspec)
+    (let ((rs (read file)))
+      (loop for r in rs do
+           (if (queries:search-recipe-by-name (getf r :name))
+               (warn "Recipe with name ~s already exists." (getf r :name))
+               (apply 'queries:add-recipe r))))))

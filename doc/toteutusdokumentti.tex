@@ -1,0 +1,70 @@
+\documentclass[12pt]{article}
+
+\usepackage{graphicx}
+\usepackage[finnish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\begin{document}
+
+\begin{titlepage}
+\title{Toteutusdokumentti}
+\author{Janne Ronkonen}
+\maketitle
+\end{titlepage}
+
+\tableofcontents
+
+\section{Johdanto}
+
+
+\subsection{Rajaukset}
+
+Ei käyttäjiä
+
+Ei reseptin jakoa osiin (esim. kastike, perunat)
+
+\section{Ohjelmiston yleisrakenne}
+
+\section{Järjestelmän komponentit}
+
+\section{Asennustiedot}
+
+
+Järjestelmä vaatii toimiakseen Common Lisp -toteutuksen sekä PostgreSQL -tietokantapalvelimen. 
+
+
+Lisäksi tarvitaan seuraavat Common Lisp-kirjastot:
+
+- Hunchentoot: web-serveri (suositellaan ajettavaksi esim. Apachen takana proxylla)
+- Postmodern: tietokanta-ajuri Postgresille
+- LML2: HTML:n generointia varten
+- CL-PPCRE: Perl Compatible Regular Expressions
+
+Kirjastojen asennus on helpointa Quicklisp -kirjastojen asennusohjelman avulla.
+
+Tiedosto build.lisp sisältää skriptin joka kääntää SBCL -Lisp-toteutusta käyttäen ohjelman
+yhdeksi binääritiedostoksi jonka voi sitten ajaa komentoriviltä. Käännetty ohjelma avaa
+käynnistyessään Lisp-komentorivin jonne kirjoittamalla `(tsoha:start [porttinumero])´ saa ohjelman
+käynnistymään halutussa portissa. Jos porttinumeroa ei anneta, käytetään oletusta joka on 8080.
+Ohjelman voi sammuttaa kirjoittamalla komentoriville `(tsoha:stop)´ (tai tappamalla ko. prosessin).
+
+
+
+
+
+\section{Käyttöohjeet}
+
+
+\appendix
+\section{Tehtäväkuvaus}
+
+\appendix
+\section{Suunnitteludokumentti???}
+
+\appendix{Create table -lauseet jos ei suunnitteludokumentissa}
+
+\appendix{Ohjelmakoodit}
+
+
+\end{document}

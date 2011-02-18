@@ -25,6 +25,11 @@
          (write-char #\space stream))))
 
 
+(defun html->string (form)
+  (with-output-to-string (out)
+    (lml2:html-print form out)))
+
+
 (defparameter *default-title* "Tsoha")
 
 
@@ -38,23 +43,22 @@
                     (style-href *default-style-href*))
   (let ((content-str (with-output-to-string (out)
                        (format-html out content))))
-    (with-output-to-string (out)
-      (lml2:html-print
+    (html->string
        `((:html)
          ((:head)
           ((:title) ,title)
           ((:link :rel "stylesheet" :type "text/css" :href ,style-href)))
          ((:body)
-          ((:h1) ,header-1)
+          ((:h1) ((:a :href "/"),header-1))
           ((:div :class "content" :id "content")
-           ,content-str)))
-       out))))
+           ,content-str))))))
+       
 
 
 (defparameter *nav-links*
   '(("/" "home")
-    ("/recipe/search" "search recipes")
-    ("/recipe/add" "add recipes")))
+    ("/recipe/search" "search")
+    ("/recipe/add" "add")))
 
 
 (defmethod format-html ((stream stream) (nd (eql :navigation-div)))
@@ -73,6 +77,22 @@
   (make-instance 'recipe-listing :recipes recipe-list))
 
 
+(defparameter *default-shortify-length* 50)
+
+
+(defparameter *default-shortify-end* "...")
+
+
+(defun shortify (string
+                 &key
+                 (length *default-shortify-length*)
+                 (end *default-shortify-end*))
+  (let ((end-index (min (length string) length)))
+    (if (< end-index (length string))
+        (format nil "~a~a" (subseq string 0 end-index) end)
+        string)))
+
+
 (defmethod format-html ((stream stream) (rl recipe-listing))
   (lml2:html-print
    `((:div :class "recipe_listing" :id "recipe_listing")
@@ -83,7 +103,8 @@
                ((:td)
                 ((:a :href
                      ,(format nil "/recipe/id/~d" (db::id recipe)))
-                 ,(db::name recipe)))))))
+                 ,(db::name recipe))
+                " ",(shortify (db::description recipe)))))))
    stream))
 
 
@@ -92,7 +113,7 @@
   (let ((recipe-count (queries:recipe-count))
         (newest-recipes (queries:newest-recipes)))
     (simple-page (body* :navigation-div
-                        (format nil "Total ~d recipes." recipe-count)
+                        (format nil "Total ~d recipes, showing the ~d newest" recipe-count (length newest-recipes))
                         (recipe-listing newest-recipes)))))
 
 
@@ -199,24 +220,30 @@ have been replaced with just a #\newline.
 
 
 (defmethod format-html ((stream stream) (recipe db::recipe))
-  (with-slots ((name db::name) (instructions db::instructions) (id db::id)) recipe
+  (with-slots ((name db::name)
+               (description db::description)
+               (instructions db::instructions)
+               (id db::id))
+      recipe
     (let ((details (queries:recipe-details id)))
       (lml2:html-print
        `((:div :class "recipe" :id ,id)
          ((:h2) ,name)
+         ((:h3) "Description")
+         ,(tbnl:escape-for-html description)
          ((:h3) "Ingredients")
          ((:table)
           ,@(loop for (ing-name amount unit-name) in details
                collect `((:tr)
-                         ((:td) ,ing-name)
+                         ((:td) ((:a :href ,(format nil "/recipe/search/results?query=~a&ingredients=on" (tbnl:url-encode ing-name))) ,ing-name))
                          ((:td) ,amount)
                          ((:td) ,unit-name))))
          ((:h3) "Instructions")
          ,(with-output-to-string (out)
-                                 (loop for char across (tbnl:escape-for-html instructions) do
-                                      (if (char= #\newline char)
-                                          (format out "<br>")
-                                          (write-char char out)))))
+            (loop for char across (tbnl:escape-for-html instructions) do
+                 (if (char= #\newline char)
+                     (format out "<br>")
+                     (write-char char out)))))
        stream))))
 
 
@@ -230,24 +257,48 @@ have been replaced with just a #\newline.
                 recipe)))))
 
 
-(defmethod format-html ((stream stream) (srf (eql :search-recipe-form)))
+(defmethod format-html ((stream stream) (sf (eql :search-form)))
+  (let ((fields '("all" "name" "description" "instructions" "ingredients")))
   (lml2:html-print
-
    `((:form :method :get :action "/recipe/search/results")
-     ((:label :for "name") "Name:")
-     ((:input :type :text :id "name" :name "name"))
+     ((:input :type :text :id "query" :name "query"))
+     :br
+     "Search in:"
+     :br
+     ((:table)
+      ,@(loop for f in fields collect
+             `((:tr)
+               ((:td)
+                ,(if (string= f "all")
+                     `((:input :type :checkbox :name ,f :checked "yes sir"))
+                     `((:input :type :checkbox :name ,f)))
+                ((:label :for ,f) ,f)))))
      ((:input :type :submit :value "search")))
-
-   stream))
+   stream)))
 
 
 (defun recipe-search ()
   (simple-page
    (body* :navigation-div
-          :search-recipe-form)))
-
+          :search-form)))
 
 (defun recipe-search-results ()
-  (simple-page
-   (body* :navigation-div
-          (recipe-listing (queries:search-recipe-by-name (tbnl:get-parameter "name"))))))
+  (let* ((all (tbnl:get-parameter "all"))
+         (name (or all (tbnl:get-parameter "name")))
+         (description (or all (tbnl:get-parameter "description")))
+         (ingredients (or all (tbnl:get-parameter "ingredients")))
+         (instructions (or all (tbnl:get-parameter "instructions")))
+         (query (tbnl:get-parameter "query"))
+         (results (queries:search-recipe-generic query
+                                                 :name name
+                                                 :description description
+                                                 :ingredients ingredients
+                                                 :instructions instructions)))
+    
+    (simple-page
+     (body* :navigation-div
+            (if results
+                (recipe-listing results)
+                "Nothing matched your search")))))
+       
+

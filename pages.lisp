@@ -25,6 +25,17 @@
          (write-char #\space stream))))
 
 
+(defgeneric url-of (object))
+
+
+(defmethod url-of ((r db::recipe))
+  (format nil "/recipe/id/~d" (db::id r)))
+
+
+(defmethod url-of ((i db::ingredient))
+  (format nil "/ingredient/name/~a" (tbnl:url-encode (db::name i))))
+
+
 (defun html->string (form)
   (with-output-to-string (out)
     (lml2:html-print form out)))
@@ -302,3 +313,62 @@ have been replaced with just a #\newline.
                 "Nothing matched your search")))))
        
 
+(defmethod format-html ((stream stream) (isf (eql :ingredient-search-form)))
+  (lml2:html-print
+   `((:form :method :get :action "/ingredient/search/results")
+     ((:input :type :text :name "name"))
+     ((:input :type :submit :value "search")))
+   stream))
+
+
+(defun ingredient-search ()
+  (simple-page
+   (body* :navigation-div
+          :ingredient-search-form)))
+
+
+(defclass ingredient-listing ()
+  ((ingredients :initarg :ingredients
+                :reader ingredients)))
+
+
+(defun ingredient-listing (ingredients)
+  (make-instance 'ingredient-listing :ingredients ingredients))
+
+
+(defmethod format-html ((stream stream) (il ingredient-listing))
+  (lml2:html-print
+   `((:div :class "ingredient_listing" :id "ingredient_listing")
+     ((:table)
+      ,@(loop for ingredient in (ingredients il)
+           collect
+             `((:tr)
+               ((:td)
+                ((:a :href
+                     ,(url-of ingredient))
+                 ,(db::name ingredient)))))))
+   stream))
+
+
+(defun ingredient-search-results ()
+  (let ((results (queries:search-ingredient-by-name (tbnl:get-parameter "name"))))
+    (simple-page
+     (body* :navigation-div
+            (if results
+                (ingredient-listing results)
+                "No ingredients matched your search")))))
+
+
+(defmethod format-html ((stream stream) (i db::ingredient))
+  (lml2:html-print
+   `((:a :href ,(url-of i)) ,(db::name i))
+   stream))
+
+
+(defun ingredient-by-name ()
+  (let* ((name (car (last (ppcre:split "/" (tbnl:request-uri*)))))
+         (ingredient (queries:find-ingredient name)))
+    (if ingredient
+        (simple-page (body* :navigation-div
+                            ingredient))
+        (setf (tbnl:return-code*) tbnl:+http-not-found+))))

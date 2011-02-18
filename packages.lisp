@@ -51,7 +51,10 @@ beginning with SEARCH- return a list of objects.")
            #:receive-add-recipe
            #:recipe-by-id
            #:recipe-search
-           #:recipe-search-results))
+           #:recipe-search-results
+           #:ingredient-search
+           #:ingredient-search-results
+           #:ingredient-by-name))
 
 
 

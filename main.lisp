@@ -1,16 +1,17 @@
 (in-package :tsoha-main)
 
 
-;;;; keep this unbound when the server is not running
 (defvar *server*)
 
-;;;; configure the server
 
 (defparameter tbnl:*message-log-pathname* "/home/leadnose/hack/tsoha/error.log")
 
+
 (defparameter tbnl:*access-log-pathname* "/home/leadnose/hack/tsoha/access.log")
 
+
 (defparameter tbnl:*show-lisp-errors-p* t)
+
 
 (defparameter tbnl:*show-lisp-backtraces-p* t)
 
@@ -45,6 +46,19 @@
    ;; show search results
    (tbnl:create-regex-dispatcher
     "^/recipe/search/results$" 'pages:recipe-search-results)
+
+   ;; search ingredients
+   (tbnl:create-regex-dispatcher
+    "^/ingredient/search$" 'pages:ingredient-search)
+
+   ;; show results for ingredient search
+   (tbnl:create-regex-dispatcher
+    "^/ingredient/search/results$" 'pages:ingredient-search-results)
+
+   ;; ingredient by name
+   (tbnl:create-regex-dispatcher
+    "^/ingredient/name/.*" 'pages:ingredient-by-name)
+    
 
    ;; show sources
    (tbnl:create-folder-dispatcher-and-handler "/sources/"
